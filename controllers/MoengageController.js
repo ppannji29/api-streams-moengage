@@ -34,28 +34,6 @@ const getAllMoengage = async(req, res) => {
     }
 }
 
-const getAssociationMoe = async(req, res) => {
-    // await models.Moengage.findAll({
-    //     order: [
-    //         ['created_at', 'DESC']
-    //     ],
-    // }).then(moeList => {
-    //     Promise.all(moeList).then((post) => {
-    //         const eventList = models.Events;
-    //         for (let i = 0; i < moeList.length; i++) {
-    //             eventList.findAll({
-    //                 where: {
-    //                     moe_req_id: post[i].moe_req_id
-    //                 },
-    //                 order: [
-    //                     ['event_uuid', 'ASC']
-    //                 ],
-    //             })
-    //         }
-    //     })
-    // });
-}
-
 const storeStreams = async(req, res) => {
     const modelMoe = await models.Moengage;
     const mEvents = await models.Events;
@@ -94,7 +72,8 @@ const storeStreams = async(req, res) => {
                 event_uuid: eventObj['event_uuid'],
                 event_time: eventObj['event_time'],
                 created_at: insMoe.created_at
-            }, { transaction : tx }).then(function (eventIns) {
+            }, { transaction : tx });
+            if(eventIns) {
                 tx.commit();
                 const newArr = [{insMoe}];
                 newArr.forEach(object => {
@@ -104,7 +83,7 @@ const storeStreams = async(req, res) => {
                 // Start Of : User Attribute Insert
                 // ------------------------------
                 const bodyUserAttr = req.body.event.user_attributes;
-                mLogStreams.create({
+                await mLogStreams.create({
                     moe_id: insMoe.id,
                     event_id: eventIns.id,
                     attribute_type: 'user_attributes',
@@ -112,7 +91,7 @@ const storeStreams = async(req, res) => {
                     attribute_value: bodyUserAttr['no_of_conversions'],
                     created_at: insMoe.created_at
                 });
-                mLogStreams.create({
+                await mLogStreams.create({
                     moe_id: insMoe.id,
                     event_id: eventIns.id,
                     attribute_type: 'user_attributes',
@@ -120,7 +99,7 @@ const storeStreams = async(req, res) => {
                     attribute_value: bodyUserAttr['first_seen'],
                     created_at: insMoe.created_at
                 });
-                mLogStreams.create({
+                await mLogStreams.create({
                     moe_id: insMoe.id,
                     event_id: eventIns.id,
                     attribute_type: 'user_attributes',
@@ -128,7 +107,7 @@ const storeStreams = async(req, res) => {
                     attribute_value: bodyUserAttr['last_known_city'],
                     created_at: insMoe.created_at
                 });
-                mLogStreams.create({
+                await mLogStreams.create({
                     moe_id: insMoe.id,
                     event_id: eventIns.id,
                     attribute_type: 'user_attributes',
@@ -136,7 +115,7 @@ const storeStreams = async(req, res) => {
                     attribute_value: bodyUserAttr['last_seen'],
                     created_at: insMoe.created_at
                 });
-                mLogStreams.create({
+                await mLogStreams.create({
                     moe_id: insMoe.id,
                     event_id: eventIns.id,
                     attribute_type: 'user_attributes',
@@ -144,7 +123,7 @@ const storeStreams = async(req, res) => {
                     attribute_value: bodyUserAttr['moengage_user_id'],
                     created_at: insMoe.created_at
                 });
-                mLogStreams.create({
+                await mLogStreams.create({
                     moe_id: insMoe.id,
                     event_id: eventIns.id,
                     attribute_type: 'user_attributes',
@@ -160,7 +139,7 @@ const storeStreams = async(req, res) => {
                 // Start Of : Event Attribute Insert
                 // ------------------------------
                 const bodyEventAttr = req.body.event.event_attributes;
-                mLogStreams.create({
+                await mLogStreams.create({
                     moe_id: insMoe.id,
                     event_id: eventIns.id,
                     attribute_type: 'event_attributes',
@@ -168,7 +147,7 @@ const storeStreams = async(req, res) => {
                     attribute_value: bodyEventAttr['appVersion'],
                     created_at: insMoe.created_at
                 });
-                mLogStreams.create({
+                await mLogStreams.create({
                     moe_id: insMoe.id,
                     event_id: eventIns.id,
                     attribute_type: 'event_attributes',
@@ -176,7 +155,7 @@ const storeStreams = async(req, res) => {
                     attribute_value: bodyEventAttr['language'],
                     created_at: insMoe.created_at
                 });
-                mLogStreams.create({
+                await mLogStreams.create({
                     moe_id: insMoe.id,
                     event_id: eventIns.id,
                     attribute_type: 'event_attributes',
@@ -192,7 +171,7 @@ const storeStreams = async(req, res) => {
                 // Start Of : Device Attribute Insert
                 // ------------------------------
                 const bodyDeviceAttr = req.body.event.device_attributes;
-                mLogStreams.create({
+                await mLogStreams.create({
                     moe_id: insMoe.id,
                     event_id: eventIns.id,
                     attribute_type: 'device_attributes',
@@ -200,7 +179,7 @@ const storeStreams = async(req, res) => {
                     attribute_value: bodyDeviceAttr['product'],
                     created_at: insMoe.created_at
                 });
-                mLogStreams.create({
+                await mLogStreams.create({
                     moe_id: insMoe.id,
                     event_id: eventIns.id,
                     attribute_type: 'device_attributes',
@@ -208,7 +187,7 @@ const storeStreams = async(req, res) => {
                     attribute_value: bodyDeviceAttr['os_api_level'],
                     created_at: insMoe.created_at
                 });
-                mLogStreams.create({
+                await mLogStreams.create({
                     moe_id: insMoe.id,
                     event_id: eventIns.id,
                     attribute_type: 'device_attributes',
@@ -216,7 +195,7 @@ const storeStreams = async(req, res) => {
                     attribute_value: bodyDeviceAttr['os_version'],
                     created_at: insMoe.created_at
                 });
-                mLogStreams.create({
+                await mLogStreams.create({
                     moe_id: insMoe.id,
                     event_id: eventIns.id,
                     attribute_type: 'device_attributes',
@@ -224,7 +203,7 @@ const storeStreams = async(req, res) => {
                     attribute_value: bodyDeviceAttr['moengage_device_id'],
                     created_at: insMoe.created_at
                 });
-                mLogStreams.create({
+                await mLogStreams.create({
                     moe_id: insMoe.id,
                     event_id: eventIns.id,
                     attribute_type: 'device_attributes',
@@ -232,7 +211,7 @@ const storeStreams = async(req, res) => {
                     attribute_value: bodyDeviceAttr['MODEL'],
                     created_at: insMoe.created_at
                 });
-                mLogStreams.create({
+                await mLogStreams.create({
                     moe_id: insMoe.id,
                     event_id: eventIns.id,
                     attribute_type: 'device_attributes',
@@ -249,7 +228,13 @@ const storeStreams = async(req, res) => {
                     data: newArr,
                     logAttr: mLogStreams
                 });
-            });
+            } else {
+                tx.rollback();
+                res.status(400).send({
+                    status: 400,
+                    message: 'Error Code'
+                });
+            }
         }
     } catch (error) {
         tx.rollback();
