@@ -14,7 +14,8 @@ module.exports = (sequelize, DataTypes) => {
      * The `models/index` file will call this method automatically.
      */
     static associate(models) {
-      
+      models.Events.belongsToMany(Moengage);
+      Moengage.belongsToMany(models.Events);
     }
   }
   Events.init({
@@ -25,7 +26,7 @@ module.exports = (sequelize, DataTypes) => {
       unique: true,
     },
     moe_id: {
-      type: DataTypes.INTEGER,
+      type: Sequelize.INTEGER(200),
       references: {
         model: 'moengages',
         tableName: 'Moengages',
@@ -49,11 +50,6 @@ module.exports = (sequelize, DataTypes) => {
     },
     event_time: {
       type: DataTypes.DATE,
-    },
-    event_type: {
-      type: DataTypes.STRING(50),
-      defaultValue: 'Event Type Empty',
-      allowNull: false,
     },
     event_source: {
       type: DataTypes.STRING(255),
