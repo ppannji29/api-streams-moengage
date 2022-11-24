@@ -91,7 +91,7 @@ const storeStreams = async(req, res) => {
                     attribute_value: bodyUserAttr['no_of_conversions'],
                     created_at: insMoe.created_at
                 });
-                await mLogStreams.create({
+                await mLogStreams.create({ 
                     moe_id: insMoe.id,
                     event_id: eventIns.id,
                     attribute_type: 'user_attributes',
