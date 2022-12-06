@@ -135,6 +135,16 @@ module.exports = {
         defaultValue: 'Attribute Value Empty',
         allowNull: false,
       },
+      entry_year: {
+        type: Sequelize.INTEGER(10),
+        defaultValue: 2022,
+        allowNull: false,
+      },
+      entry_month: {
+        type: Sequelize.INTEGER(4),
+        defaultValue: 11,
+        allowNull: false,
+      },
       created_at: {
         type: 'TIMESTAMP',
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),

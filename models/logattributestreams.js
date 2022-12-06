@@ -60,6 +60,14 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: 'Attribute Value Empty',
       allowNull: false,
     },
+    entry_year: {
+      type: DataTypes.INTEGER(10),
+      allowNull: false,
+    },
+    entry_month: {
+      type: DataTypes.INTEGER(4),
+      allowNull: false,
+    },
     created_at: {
       type: 'TIMESTAMP',
       defaultValue: DataTypes.NOW,

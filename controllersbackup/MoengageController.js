@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const models = require('../models');
 const Sequelize = require('sequelize');
-const { Op } = require("sequelize");
+// const bodyParser = require('body-parser');
 const dbConn = new Sequelize(process.env.DB_NAME, process.env.DB_USERNAME, process.env.DB_PASSWORD, {
     dialect: process.env.DB_DIALECT,
     host: process.env.DB_HOST,
@@ -32,134 +32,6 @@ const getAllMoengage = async(req, res) => {
     }
 }
 
-
-// --------------------------
-// Start Of : Data cube scheduler 
-// --------------------------
-const deviceCountStart = require('node-cron');
-// deviceCountStart.schedule('*/59 * * * * *', () => {
-deviceCountStart.schedule('1 * * * *', () => {
-    console.log('running a task every 1 Minutes');
-    deviceCountFunc();
-});
-
-const deviceCountFunc = async(req, res) => {
-    const deviceType = 'manufacturer';
-    const now = new Date();
-    const getYearNow = now.getFullYear();
-    const getMonthNow = now.getUTCMonth() + 1;
-    const tx = await dbConn.transaction();
-    const dataLogStreams = await models.LogAttributeStreams.findAll({
-        where: {
-            [Op.and]: [
-                { attribute_key: deviceType },
-                { entry_year: getYearNow },
-                { entry_month: getMonthNow }
-            ]
-        },
-    });
-    if(dataLogStreams.length > 0) {
-        try {
-            const logLength = dataLogStreams.length;
-            let deviceArr = [];
-            for (let i = 0; i < logLength; i++) {
-                deviceArr[i] = {
-                    'device_name' : dataLogStreams[i]['attribute_value'],
-                    'date_updated' : dataLogStreams[i]['created_at'],
-                    'entry_year' : dataLogStreams[i]['entry_year'],
-                    'entry_month' : dataLogStreams[i]['entry_month'],
-                    'device_count' : 0
-                };
-            }
-            // ---------------------------------------------------------
-            // Parsing to unique value from array objects = device_name
-            // ---------------------------------------------------------
-            const newArr = newArrDeviceCount(deviceArr);
-            let response = [];
-            for (let j = 0; j < newArr.length; j++) {
-                for (let k = 0; k < deviceArr.length; k++) {
-                    if(newArr[j]['device_name'] == deviceArr[k]['device_name']) {
-                        response[j] = {
-                            'device_name': newArr[j]['device_name'],
-                            'entry_year' : newArr[j]['entry_year'],
-                            'entry_month' : newArr[j]['entry_month'],
-                            'device_count': newArr[j]['device_count']+=1
-                        };
-                    } 
-                }
-            }
-            // console.log("Test Spam >> : ", JSON.parse(JSON.stringify(response)));
-            const ModelDeviceCount = await models.DeviceCountEvent;
-            const checkIfEmpty = await models.DeviceCountEvent.findAll({
-                where: {
-                    [Op.and]: [
-                        { entry_year: getYearNow },
-                        { entry_month: getMonthNow },
-                    ]
-                },
-            });
-            if(checkIfEmpty.length > 0) {
-                console.log("Update > : ", response);
-                const delOldData = await ModelDeviceCount.destroy({
-                    where: {
-                        [Op.and]: [
-                            { entry_year: getYearNow },
-                            { entry_month: getMonthNow },
-                        ]
-                    },
-                }, { transaction : tx }); 
-                for (let n = 0; n < response.length; n++) {
-                    const dataUpdateIns = await ModelDeviceCount.create({
-                        device_name: response[n]['device_name'],
-                        device_count: response[n]['device_count'],
-                        entry_year: response[n]['entry_year'],
-                        entry_month: response[n]['entry_month'],
-                        last_update: new Date()
-                    }, { transaction : tx });
-                }
-                tx.commit();
-                console.log("Response arr >> : ", JSON.parse(JSON.stringify(response)));
-                console.log("Updated Data");              
-            } else {
-                for (let n = 0; n < response.length; n++) {
-                    const dataIns = await ModelDeviceCount.create({
-                        device_name: response[n]['device_name'],
-                        device_count: response[n]['device_count'],
-                        entry_year: response[n]['entry_year'],
-                        entry_month: response[n]['entry_month'],
-                        last_update: new Date()
-                    }, { transaction : tx });
-                }
-                tx.commit();
-                console.log(JSON.parse(JSON.stringify(response)));
-                console.log("Insert Data");
-            }
-        } catch (error) {
-            tx.rollback();
-            console.log(error);
-        } 
-    } else {
-        tx.rollback();
-        console.log("Data Not Found");
-    }
-}
-
-function newArrDeviceCount(deviceArr) {
-    const uniqueDevice = [];
-    const unique = deviceArr.filter(element => {
-        const isDuplicate = uniqueDevice.includes(element.device_name);
-        if (!isDuplicate) {
-            uniqueDevice.push(element.device_name, element.date_updated, element.entry_year, element.entry_month, element.device_count);
-            return true;
-        }
-        return false;
-    });
-    return unique;
-}
-// --------------------------
-// End Of : Data cube scheduler
-// --------------------------
-
 const storeStreams = async(req, res) => {
     const modelMoe = await models.Moengage;
     const mEvents = await models.Events;
@@ -187,9 +59,6 @@ const storeStreams = async(req, res) => {
             for (let i = 0; i < maxLength; i++ ) {
                 eventID += characters.charAt(Math.floor(Math.random() * charactersLength));
             }
-            const dateNow = new Date();
-            const getYearNow = dateNow.getFullYear();
-            const getMonthNow = dateNow.getMonth() + 1;
             const eventIns = await mEvents.create({
                 id : eventID,
                 moe_id: insMoe.id,
@@ -218,9 +87,7 @@ const storeStreams = async(req, res) => {
                     attribute_type: 'user_attributes',
                     attribute_key: 'no_of_conversions',
                     attribute_value: bodyUserAttr['no_of_conversions'],
-                    created_at: insMoe.created_at,
-                    entry_year: getYearNow,
-                    entry_month: getMonthNow
+                    created_at: insMoe.created_at
                 });
                 await mLogStreams.create({ 
                     moe_id: insMoe.id,
@@ -228,9 +95,7 @@ const storeStreams = async(req, res) => {
                     attribute_type: 'user_attributes',
                     attribute_key: 'first_seen',
                     attribute_value: bodyUserAttr['first_seen'],
-                    created_at: insMoe.created_at,
-                    entry_year: getYearNow,
-                    entry_month: getMonthNow
+                    created_at: insMoe.created_at
                 });
                 await mLogStreams.create({
                     moe_id: insMoe.id,
@@ -238,9 +103,7 @@ const storeStreams = async(req, res) => {
                     attribute_type: 'user_attributes',
                     attribute_key: 'last_known_city',
                     attribute_value: bodyUserAttr['last_known_city'],
-                    created_at: insMoe.created_at,
-                    entry_year: getYearNow,
-                    entry_month: getMonthNow
+                    created_at: insMoe.created_at
                 });
                 await mLogStreams.create({
                     moe_id: insMoe.id,
@@ -248,9 +111,7 @@ const storeStreams = async(req, res) => {
                     attribute_type: 'user_attributes',
                     attribute_key: 'last_seen',
                     attribute_value: bodyUserAttr['last_seen'],
-                    created_at: insMoe.created_at,
-                    entry_year: getYearNow,
-                    entry_month: getMonthNow
+                    created_at: insMoe.created_at
                 });
                 await mLogStreams.create({
                     moe_id: insMoe.id,
@@ -258,9 +119,7 @@ const storeStreams = async(req, res) => {
                     attribute_type: 'user_attributes',
                     attribute_key: 'moengage_user_id',
                     attribute_value: bodyUserAttr['moengage_user_id'],
-                    created_at: insMoe.created_at,
-                    entry_year: getYearNow,
-                    entry_month: getMonthNow
+                    created_at: insMoe.created_at
                 });
                 await mLogStreams.create({
                     moe_id: insMoe.id,
@@ -268,9 +127,7 @@ const storeStreams = async(req, res) => {
                     attribute_type: 'user_attributes',
                     attribute_key: 'ltv',
                     attribute_value: bodyUserAttr['ltv'],
-                    created_at: insMoe.created_at,
-                    entry_year: getYearNow,
-                    entry_month: getMonthNow
+                    created_at: insMoe.created_at
                 });
                 // ------------------------------
                 // End Of : User Attribute Insert
@@ -286,9 +143,7 @@ const storeStreams = async(req, res) => {
                     attribute_type: 'event_attributes',
                     attribute_key: 'appVersion',
                     attribute_value: bodyEventAttr['appVersion'],
-                    created_at: insMoe.created_at,
-                    entry_year: getYearNow,
-                    entry_month: getMonthNow
+                    created_at: insMoe.created_at
                 });
                 await mLogStreams.create({
                     moe_id: insMoe.id,
@@ -296,9 +151,7 @@ const storeStreams = async(req, res) => {
                     attribute_type: 'event_attributes',
                     attribute_key: 'language',
                     attribute_value: bodyEventAttr['language'],
-                    created_at: insMoe.created_at,
-                    entry_year: getYearNow,
-                    entry_month: getMonthNow
+                    created_at: insMoe.created_at
                 });
                 await mLogStreams.create({
                     moe_id: insMoe.id,
@@ -306,9 +159,7 @@ const storeStreams = async(req, res) => {
                     attribute_type: 'event_attributes',
                     attribute_key: 'sdkVersion',
                     attribute_value: bodyEventAttr['sdkVersion'],
-                    created_at: insMoe.created_at,
-                    entry_year: getYearNow,
-                    entry_month: getMonthNow
+                    created_at: insMoe.created_at
                 });
                 // ------------------------------
                 // End Of : Event Attribute Insert
@@ -324,9 +175,7 @@ const storeStreams = async(req, res) => {
                     attribute_type: 'device_attributes',
                     attribute_key: 'product',
                     attribute_value: bodyDeviceAttr['product'],
-                    created_at: insMoe.created_at,
-                    entry_year: getYearNow,
-                    entry_month: getMonthNow
+                    created_at: insMoe.created_at
                 });
                 await mLogStreams.create({
                     moe_id: insMoe.id,
@@ -334,9 +183,7 @@ const storeStreams = async(req, res) => {
                     attribute_type: 'device_attributes',
                     attribute_key: 'os_api_level',
                     attribute_value: bodyDeviceAttr['os_api_level'],
-                    created_at: insMoe.created_at,
-                    entry_year: getYearNow,
-                    entry_month: getMonthNow
+                    created_at: insMoe.created_at
                 });
                 await mLogStreams.create({
                     moe_id: insMoe.id,
@@ -344,9 +191,7 @@ const storeStreams = async(req, res) => {
                     attribute_type: 'device_attributes',
                     attribute_key: 'os_version',
                     attribute_value: bodyDeviceAttr['os_version'],
-                    created_at: insMoe.created_at,
-                    entry_year: getYearNow,
-                    entry_month: getMonthNow
+                    created_at: insMoe.created_at
                 });
                 await mLogStreams.create({
                     moe_id: insMoe.id,
@@ -354,9 +199,7 @@ const storeStreams = async(req, res) => {
                     attribute_type: 'device_attributes',
                     attribute_key: 'moengage_device_id',
                     attribute_value: bodyDeviceAttr['moengage_device_id'],
-                    created_at: insMoe.created_at,
-                    entry_year: getYearNow,
-                    entry_month: getMonthNow
+                    created_at: insMoe.created_at
                 });
                 await mLogStreams.create({
                     moe_id: insMoe.id,
@@ -364,9 +207,7 @@ const storeStreams = async(req, res) => {
                     attribute_type: 'device_attributes',
                     attribute_key: 'MODEL',
                     attribute_value: bodyDeviceAttr['MODEL'],
-                    created_at: insMoe.created_at,
-                    entry_year: getYearNow,
-                    entry_month: getMonthNow
+                    created_at: insMoe.created_at
                 });
                 await mLogStreams.create({
                     moe_id: insMoe.id,
@@ -374,9 +215,7 @@ const storeStreams = async(req, res) => {
                     attribute_type: 'device_attributes',
                     attribute_key: 'manufacturer',
                     attribute_value: bodyDeviceAttr['manufacturer'],
-                    created_at: insMoe.created_at,
-                    entry_year: getYearNow,
-                    entry_month: getMonthNow
+                    created_at: insMoe.created_at
                 });
                 // ------------------------------
                 // End Of : Device Attribute Insert
@@ -398,7 +237,6 @@ const storeStreams = async(req, res) => {
                     message: "Success to store moengage events",
                     data: newArr
                 });
-                // console.log(newArr);
             } else {
                 tx.rollback();
                 res.status(400).send({
@@ -417,12 +255,8 @@ const storeStreams = async(req, res) => {
     }
 }
 
-function convertTZ(date, tzString) {
-    return new Date((typeof date === "string" ? new Date(date) : date).toLocaleString("en-US", {timeZone: tzString}));   
-}
-
 const deviceCountEvents = async(req, res) => {
-    const people = [
+    const data = [
         {
             'id': 1,
             'name': 'Panji'
@@ -433,19 +267,61 @@ const deviceCountEvents = async(req, res) => {
         }
     ];
     if(data.length > 0) {
-        res.status(200).send({
-            status: 200,
-            message: "Data Found",
-            data: people
-        });
+        
     } else {
-        res.status(400).send({
-            status: 400,
-            message: "Data Not Found"
-        });
+
     }
-    // console.log("Event Device Count");
 }
 
-// module.exports = { getAllMoengage, storeStreams, testNested, deviceCountEvents };
-module.exports = { getAllMoengage, storeStreams, deviceCountEvents };
+
+
+// -------------------
+// END
+// -------------------
+// input = finaccel
+const testNested = async(req, res) => {
+    const str = 'finaccel';
+    let strSplit = str.split("");
+    const funcNewStr = newStr(strSplit);
+    let response = [{
+        'f': 0,
+        'i': 0,
+        'n': 0,
+        'a': 0,
+        'c': 0,
+        'e': 0,
+        'l': 0,
+    }];
+    for (let j = 0; j < strSplit.length; j++) {
+        for (let i = 0; i < funcNewStr.length; i++) {
+            if(funcNewStr[i] == strSplit[j] && funcNewStr[i] == 'f') {
+                response[0]['f'] = response[0]['f']+=1;
+            } else if(funcNewStr[i] == strSplit[j] && funcNewStr[i] == 'i') {
+                response[0]['i'] = response[0]['i']+=1;
+            } else if(funcNewStr[i] == strSplit[j] && funcNewStr[i] == 'n') {
+                response[0]['n'] = response[0]['n']+=1
+            } else if(funcNewStr[i] == strSplit[j] && funcNewStr[i] == 'a') {
+                response[0]['a'] = response[0]['a']+=1;
+            } else if(funcNewStr[i] == strSplit[j] && funcNewStr[i] == 'c') {
+                response[0]['c'] = response[0]['c']+=1;
+            } else if(funcNewStr[i] == strSplit[j] && funcNewStr[i] == 'e') {
+                response[0]['e'] = response[0]['e']+=1;
+            } else if(funcNewStr[i] == strSplit[j] && funcNewStr[i] == 'l') {
+                response[0]['l'] = response[0]['l']+=1;
+            } 
+        }
+    }
+    res.status(400).send({
+        status: 400,
+        data: response
+    });
+}
+
+function newStr(strSplit) {
+    let uniqueChars = strSplit.filter((c, index) => {
+        return strSplit.indexOf(c) === index;
+    });
+    return uniqueChars;
+}
+
+module.exports = { getAllMoengage, storeStreams, testNested, deviceCountEvents };
